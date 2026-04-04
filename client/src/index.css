@@ -1177,13 +1177,334 @@ textarea.form-control {
   color: var(--text-secondary);
 }
 
-/* ═══════════════════════════ RESPONSIVE ═══════════ */
+/* ═══════════════════════════════════════════════════════════
+   RESPONSIVE — COMPREHENSIVE MOBILE OVERHAUL
+   Only applies at ≤768px. Desktop is completely untouched.
+   ═══════════════════════════════════════════════════════════ */
+
 @media (max-width: 768px) {
-  .navbar { padding: 0 16px; }
-  .page-container { padding: 24px 16px; }
-  .card-grid { grid-template-columns: 1fr; }
-  .page-header h1 { font-size: 1.5rem; }
+
+  /* ─── Global / Layout ─── */
+  .navbar { padding: 0 12px; height: 56px; }
+  .page-container { padding: 16px 12px; }
+  .page-header { margin-bottom: 20px; }
+  .page-header h1 { font-size: 1.35rem; }
+  .page-header p { font-size: 0.9rem; }
+
+  /* ─── Cards & Grids ─── */
+  .card-grid { grid-template-columns: 1fr; gap: 14px; }
+  .glass-card { padding: 16px; border-radius: var(--radius-md); }
+  .glass-card:hover { transform: none; } /* disable hover lift on touch */
+
+  /* ─── Stats row — 2‑col on mobile ─── */
+  .stats-row {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+    margin-bottom: 16px;
+  }
+  .stat-card { padding: 14px 10px; }
+  .stat-number { font-size: 1.6rem; }
+  .stat-label { font-size: 0.75rem; }
+
+  /* ─── Buttons — touch‑friendly 44px min ─── */
+  .btn { padding: 12px 18px; font-size: 0.85rem; min-height: 44px; }
+  .btn-sm { padding: 10px 14px; font-size: 0.8rem; min-height: 40px; }
+  .btn-lg { padding: 14px 24px; font-size: 0.95rem; }
+
+  /* ─── Forms — larger touch targets ─── */
+  .form-control {
+    padding: 14px 14px;
+    font-size: 1rem;
+    min-height: 48px;
+    border-radius: var(--radius-sm);
+  }
+  .form-group { margin-bottom: 14px; }
+  .form-group label { font-size: 0.82rem; margin-bottom: 4px; }
+  textarea.form-control { min-height: 80px; }
+
+  /* ─── Search + Filter Row (student & admin dashboard header) ─── */
+  .search-box.glass-card {
+    max-width: 100% !important;
+    flex: 1 1 100% !important;
+    padding: 8px 12px !important;
+  }
+  .search-box.glass-card input { font-size: 0.9rem !important; }
+
+  /* ─── Scan input ─── */
   .scan-input-wrapper { flex-direction: column; }
+
+  /* ─── Tabs — scrollable on mobile ─── */
+  .tab-bar {
+    width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+  .tab-bar::-webkit-scrollbar { display: none; }
+  .tab-btn { padding: 10px 16px; font-size: 0.82rem; white-space: nowrap; }
+
+  /* Admin tab container — wrap & fill width */
+  .tab-container.glass-card {
+    display: flex !important;
+    flex-wrap: wrap !important;
+    gap: 6px !important;
+    padding: 6px !important;
+    width: 100% !important;
+  }
+  .tab-container.glass-card .btn {
+    flex: 1 1 calc(50% - 6px);
+    font-size: 0.78rem;
+    padding: 10px 8px;
+    text-align: center;
+    justify-content: center;
+  }
+
+  /* ─── Data Tables — horizontal scroll ─── */
+  .data-table {
+    display: block;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    white-space: nowrap;
+  }
+  .data-table th,
+  .data-table td {
+    padding: 10px 12px;
+    font-size: 0.8rem;
+  }
+
+  /* ─── Status badges ─── */
+  .status-badge { font-size: 0.65rem; padding: 5px 10px; }
+
+  /* ─── Team actions — stack vertically ─── */
+  .team-actions { flex-direction: column; }
+  .team-actions .btn { width: 100%; }
+
+  /* ─── Event card meta ─── */
+  .event-card-header h3 { font-size: 1rem; }
+  .event-meta-row { font-size: 0.8rem !important; }
+  .event-fee { font-size: 1.2rem; }
+
+  /* ─── Cert cards ─── */
+  .cert-card { flex-direction: column; text-align: center; gap: 12px; }
+
+  /* ─── Modals — full‑width on mobile ─── */
+  .modal-overlay { padding: 12px; align-items: flex-end; }
+  .modal-content {
+    width: 100% !important;
+    max-width: 100% !important;
+    max-height: 90vh;
+    overflow-y: auto;
+    border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+  }
+  .modal-content.glass-card { padding: 20px 16px; }
+
+  /* ─── QR Modal ─── */
+  .qr-modal { padding: 24px 16px; width: 95%; }
+  .qr-modal h3 { font-size: 1.1rem; }
+
+  /* ─── Poster Modal ─── */
+  .poster-modal-overlay { padding: 8px; }
+  .poster-modal {
+    padding: 16px;
+    max-height: 92vh;
+    border-radius: var(--radius-lg);
+  }
+  .poster-modal h2 { font-size: 1.2rem; }
+  .poster-modal .poster-meta { gap: 10px; }
+  .poster-modal .poster-meta-item { font-size: 0.8rem; }
+  .poster-modal img.poster-image { max-height: 300px; }
+
+  /* ─── Full screen modal ─── */
+  .full-screen-modal {
+    width: 100vw !important;
+    max-width: 100vw !important;
+    height: 100vh !important;
+    max-height: 100vh !important;
+    border-radius: 0 !important;
+  }
+
+  /* ─── Profile dropdown ─── */
+  .profile-dropdown {
+    position: fixed;
+    top: auto;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    width: 100%;
+    border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+    animation: slideUpMobile 0.3s var(--ease-out);
+    padding: 12px;
+    z-index: 250;
+  }
+  .profile-dropdown-item { padding: 14px 12px; font-size: 1rem; }
+  .logout-item { padding: 16px 12px; font-size: 1.05rem; }
+
+  /* ─── Toast — mobile‑friendly ─── */
+  .toast-container {
+    top: auto;
+    bottom: 16px;
+    left: 12px;
+    right: 12px;
+  }
+  .toast {
+    max-width: 100%;
+    padding: 14px 18px;
+    font-size: 0.9rem;
+    border-radius: var(--radius-md);
+  }
+
+  /* ─── Phone input group ─── */
+  .phone-input-group .country-code-select { width: 72px; font-size: 0.8rem; padding: 0 2px; }
+
+  /* ─── Summary grid ─── */
+  .summary-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+  }
+  .summary-card { padding: 16px 12px; }
+  .summary-card .summary-value { font-size: 1.5rem; }
+  .summary-card .summary-icon { font-size: 1.5rem; }
+
+  /* ─── Room grid ─── */
+  .room-grid { grid-template-columns: 1fr; gap: 12px; }
+
+  /* ─── Register team form ─── */
+  .register-team-form { max-width: 100%; }
+  .add-member-row { flex-direction: column; }
+  .add-member-row .btn { width: 100%; }
+
+  /* ─── Chat — full‑height on mobile ─── */
+  .chat-messages { max-height: 260px; padding: 12px; }
+  .chat-bubble { max-width: 92%; font-size: 0.85rem; }
+  .chat-input-bar { padding: 10px; gap: 6px; }
+  .chat-input-bar .btn { padding: 10px 14px; font-size: 1rem; }
+
+  /* ─── Sharing Corner ─── */
+  .sharing-header { padding: 12px 14px; }
+  .sharing-create-form { padding: 10px 12px; }
+  .sharing-post { padding: 10px 12px; }
+  .sharing-feed { max-height: 380px; }
+  .sharing-post-media img { max-height: 240px; }
+  .sharing-post-media video { max-height: 240px; }
+  .sharing-create-actions { flex-direction: column; gap: 8px; align-items: stretch; }
+  .sharing-create-actions .btn { width: 100%; }
+
+  /* ─── Carousel ─── */
+  .event-carousel {
+    padding: 24px 12px 24px calc(50% - 140px);
+    gap: 12px;
+  }
+  .carousel-card {
+    flex: 0 0 280px;
+    min-width: 260px;
+  }
+  .carousel-card-active { transform: scale(1.04); }
+  .carousel-card-inactive { transform: scale(0.9); opacity: 0.5; }
+
+  /* ─── Auth page ─── */
+  .auth-split-wrapper { flex-direction: column; }
+  .auth-showcase { display: none; }
+  .auth-form-side {
+    border-left: none;
+    padding: 20px 16px;
+    min-height: calc(100vh - 56px);
+  }
+  .auth-card {
+    padding: 24px 16px !important;
+    max-width: 100%;
+    border-radius: var(--radius-lg) !important;
+  }
+  .auth-card h2 { font-size: 1.6rem; }
+  .auth-card .auth-subtitle { margin-bottom: 24px; font-size: 0.9rem; }
+
+  /* ─── Dropdown overlay — capture taps behind profile on mobile ─── */
+  .dropdown-overlay { z-index: 200; }
+
+  /* ─── Calendar ─── */
+  .college-calendar { overflow-x: auto; }
+
+  /* ─── Doc upload card ─── */
+  .doc-upload-card { padding: 12px; }
+  .doc-link-item { flex-direction: column; align-items: flex-start; gap: 8px; padding: 10px; }
+
+  /* ─── Team dropdown panel ─── */
+  .team-dropdown-panel { margin: 0 2px 4px 2px; }
+  .team-dropdown-member { padding: 8px 10px; gap: 10px; }
+  .team-dropdown-avatar { width: 32px; height: 32px; font-size: 0.75rem; }
+  .team-dropdown-name { font-size: 0.82rem; }
+  .team-dropdown-detail { font-size: 0.72rem; }
+
+  /* ─── Loading state ─── */
+  .loading-center { min-height: 300px; padding: 40px; }
+  .eventloop-loader { width: 60px; height: 60px; }
+
+  /* ─── Empty state ─── */
+  .empty-state { padding: 40px 16px; }
+  .empty-state-icon { font-size: 2.2rem; }
+
+  /* ─── Scrollbar — hide on mobile for cleaner look ─── */
+  ::-webkit-scrollbar { width: 3px; height: 3px; }
+
+  /* ─── Light mode mobile menu ─── */
+  [data-theme='light'] .navbar-links.open {
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+  }
+}
+
+/* ─── Slide‑up animation for mobile profile dropdown ─── */
+@keyframes slideUpMobile {
+  from { transform: translateY(100%); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+/* ═══════════ EXTRA SMALL SCREENS (≤480px) ═══════════ */
+@media (max-width: 480px) {
+  .navbar { padding: 0 10px; height: 52px; }
+  .navbar-brand { font-size: 1.1rem; }
+  .page-container { padding: 12px 10px; }
+  .page-header h1 { font-size: 1.2rem; }
+  .page-header p { font-size: 0.82rem; }
+
+  .glass-card { padding: 14px; }
+
+  .stats-row { gap: 8px; }
+  .stat-card { padding: 12px 8px; }
+  .stat-number { font-size: 1.3rem; }
+  .stat-label { font-size: 0.7rem; }
+
+  .btn { padding: 11px 14px; font-size: 0.82rem; }
+
+  .auth-form-side { padding: 16px 12px; }
+  .auth-card { padding: 20px 14px !important; }
+  .auth-card h2 { font-size: 1.4rem; }
+
+  /* Admin tab buttons — smaller on tiny screens */
+  .tab-container.glass-card .btn {
+    font-size: 0.72rem;
+    padding: 8px 6px;
+  }
+
+  .event-carousel {
+    padding: 20px 8px 20px calc(50% - 130px);
+  }
+  .carousel-card {
+    flex: 0 0 260px;
+    min-width: 240px;
+  }
+
+  .summary-grid { grid-template-columns: 1fr; }
+
+  .poster-modal { padding: 12px; }
+  .poster-modal h2 { font-size: 1.05rem; }
+
+  .sharing-header-icon { width: 36px; height: 36px; font-size: 1.3rem; }
+  .sharing-title { font-size: 0.95rem; }
+
+  /* Profile button — avatar only */
+  .profile-btn { padding: 3px; border-radius: 50%; }
+  .profile-avatar { width: 34px; height: 34px; }
+  .user-badge { display: none; }
 }
 
 /* ═══════════════════════════ REGISTER FORM ═══════ */
@@ -2632,7 +2953,7 @@ textarea.form-control:focus {
 
 @media (max-width: 991px) {
   .navbar {
-    padding: 12px 20px;
+    padding: 0 14px;
   }
   
   .mobile-toggle {
@@ -2642,31 +2963,34 @@ textarea.form-control:focus {
     background: rgba(255, 255, 255, 0.05);
     border: 1px solid rgba(255, 255, 255, 0.1);
     color: white;
-    width: 40px;
-    height: 40px;
-    border-radius: 8px;
-    font-size: 1.5rem;
+    width: 44px;
+    height: 44px;
+    border-radius: 10px;
+    font-size: 1.4rem;
     cursor: pointer;
     order: 2;
     margin-left: auto;
+    -webkit-tap-highlight-color: transparent;
   }
 
   .navbar-links {
     position: fixed;
-    top: 72px;
+    top: 56px;
     left: 0;
     right: 0;
     background: rgba(10, 8, 22, 0.98);
     backdrop-filter: blur(20px);
     flex-direction: column;
-    padding: 24px;
-    gap: 16px;
+    padding: 16px;
+    gap: 10px;
     border-bottom: 1px solid var(--border-subtle);
     transform: translateY(-100%);
     opacity: 0;
     visibility: hidden;
-    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
     z-index: 1000;
+    max-height: calc(100vh - 56px);
+    overflow-y: auto;
   }
 
   .navbar-links.open {
@@ -2681,7 +3005,11 @@ textarea.form-control:focus {
     background: rgba(255, 255, 255, 0.03);
     border-radius: 12px;
     text-align: center;
-    font-size: 1.1rem;
+    font-size: 1rem;
+    min-height: 48px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
   }
 
   .navbar-links a.active {
@@ -2691,7 +3019,7 @@ textarea.form-control:focus {
 
   .navbar-user {
     order: 3;
-    margin-left: 12px;
+    margin-left: 8px;
   }
   
   .profile-name {
