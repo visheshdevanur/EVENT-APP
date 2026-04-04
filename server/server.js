@@ -24,6 +24,11 @@ const attendanceRoutes = require('./routes/attendanceRoutes');
 const certificateRoutes = require('./routes/certificateRoutes');
 const messageRoutes = require('./routes/messageRoutes');
 const userRoutes = require('./routes/userRoutes');
+const sharingRoutes = require('./routes/sharingRoutes');
+const roomRoutes = require('./routes/roomRoutes');
+const documentRoutes = require('./routes/documentRoutes');
+const departmentRoutes = require('./routes/departmentRoutes');
+const activityLogRoutes = require('./routes/activityLogRoutes');
 
 // ── Mount Routes ─────────────────────────────────
 app.use('/api/auth', authRoutes);
@@ -34,6 +39,11 @@ app.use('/api/attendance', attendanceRoutes);
 app.use('/api/certificates', certificateRoutes);
 app.use('/api/messages', messageRoutes);
 app.use('/api/users', userRoutes);
+app.use('/api/sharing', sharingRoutes);
+app.use('/api/rooms', roomRoutes);
+app.use('/api/documents', documentRoutes);
+app.use('/api/departments', departmentRoutes);
+app.use('/api/activity-logs', activityLogRoutes);
 
 // ── Health Check ─────────────────────────────────
 app.get('/api/health', (req, res) => {

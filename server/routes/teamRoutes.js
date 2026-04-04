@@ -4,6 +4,7 @@ const QRCode = require('qrcode');
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
+const crypto = require('crypto');
 const { requireAuth } = require('../middleware/authMiddleware');
 
 // Multer config for payment screenshots
@@ -118,6 +119,8 @@ router.post('/register', requireAuth, async (req, res) => {
         event_id: eventId,
         leader_id: leaderId,
         payment_status: event.entry_fee > 0 ? 'pending' : 'confirmed',
+        qr_token: crypto.randomUUID(),
+        food_qr_token: crypto.randomUUID()
       })
       .select()
       .single();
@@ -177,7 +180,7 @@ router.get('/my', requireAuth, async (req, res) => {
     for (const team of teams || []) {
       const { data: members } = await supabase
         .from('team_members')
-        .select('user_id, users(id, student_id, name, email)')
+        .select('user_id, users(id, student_id, name, email, phone)')
         .eq('team_id', team.id);
       result.push({ ...team, members: (members || []).map((m) => m.users) });
     }
@@ -226,6 +229,7 @@ router.get('/:id/qr', requireAuth, async (req, res) => {
       attendanceToken: team.qr_token,
       foodQR,
       foodToken: team.food_qr_token,
+      team
     });
   } catch (err) {
     console.error('QR error:', err);
@@ -241,13 +245,28 @@ router.get('/event/:eventId', requireAuth, async (req, res) => {
       .select('*')
       .eq('event_id', req.params.eventId);
 
+    const { data: docs } = await supabase
+      .from('document_uploads')
+      .select('user_id, drive_link')
+      .eq('event_id', req.params.eventId);
+    const docsMap = {};
+    if (docs) docs.forEach(d => docsMap[d.user_id] = d.drive_link);
+
     const result = [];
     for (const team of teams || []) {
       const { data: members } = await supabase
         .from('team_members')
-        .select('user_id, users(id, student_id, name, email)')
+        .select('user_id, users(id, student_id, name, email, phone)')
         .eq('team_id', team.id);
-      result.push({ ...team, members: (members || []).map((m) => m.users) });
+      // Attach leader info with phone for admin visibility
+      const leader = (members || []).find((m) => m.users?.id === team.leader_id);
+      const leaderDoc = docsMap[team.leader_id] || null;
+      result.push({ 
+        ...team, 
+        members: (members || []).map((m) => m.users), 
+        leader_phone: leader?.users?.phone || null,
+        leader_document_link: leaderDoc
+      });
     }
 
     res.json(result);

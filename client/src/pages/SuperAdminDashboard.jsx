@@ -1,306 +1,417 @@
 import { useState, useEffect } from 'react';
-import { apiFetch } from '../utils/api';
+import { apiFetch, API_BASE } from '../utils/api';
+import CollegeCalendar from '../components/CollegeCalendar';
 
 export default function SuperAdminDashboard() {
+  const [departments, setDepartments] = useState([]);
   const [users, setUsers] = useState([]);
-  const [allEvents, setAllEvents] = useState([]);
+  const [activityLogs, setActivityLogs] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [filterRole, setFilterRole] = useState('all');
-  const [showCreateAdmin, setShowCreateAdmin] = useState(false);
+  
+  const [activeTab, setActiveTab] = useState('departments');
+  const [showCreateDept, setShowCreateDept] = useState(false);
+  
+  // Track which department we are assigning a HOD for
+  const [assigningHodDeptId, setAssigningHodDeptId] = useState(null);
+  const [showHodPassword, setShowHodPassword] = useState(false);
+  
+  const [deptForm, setDeptForm] = useState({ name: '' });
+  const [deptAdminForm, setDeptAdminForm] = useState({ studentId: '', name: '', email: '', password: '', role: 'dept_admin' });
   const [creating, setCreating] = useState(false);
-  const [adminForm, setAdminForm] = useState({ studentId: '', name: '', email: '', password: '' });
-  const [activeTab, setActiveTab] = useState('users');
-  const [eventSearch, setEventSearch] = useState('');
+
+  // Filter state for Global Users
+  const [userDeptFilter, setUserDeptFilter] = useState('all');
+  const [editingUserId, setEditingUserId] = useState(null);
+  const [editUserForm, setEditUserForm] = useState({ name: '', phone: '', student_id: '' });
+  const [updatingUser, setUpdatingUser] = useState(false);
+
+  // Events per department state
+  const [allEvents, setAllEvents] = useState([]);
+  const [expandedDeptId, setExpandedDeptId] = useState(null);
+  const [deptEventFilter, setDeptEventFilter] = useState('all');
 
   useEffect(() => { loadData(); }, []);
 
   async function loadData() {
     try {
-      const [usersData, eventsData] = await Promise.all([
+      const [deptsData, usersData, logsData, eventsData] = await Promise.all([
+        apiFetch('/departments'),
         apiFetch('/users'),
-        apiFetch('/events'),
+        apiFetch('/activity-logs'),
+        apiFetch('/events')
       ]);
+      setDepartments(deptsData);
       setUsers(usersData);
-      setAllEvents(eventsData);
+      setActivityLogs(logsData);
+      setAllEvents(eventsData || []);
     } catch (err) { console.error(err); }
     finally { setLoading(false); }
   }
 
-  const handleChangeRole = async (userId, newRole) => {
-    const action = newRole === 'admin' ? 'promote to Admin' : 'demote to Student';
-    if (!confirm(`Are you sure you want to ${action} this user?`)) return;
+  const handleCreateDept = async (e) => {
+    e.preventDefault();
+    setCreating(true);
     try {
-      await apiFetch(`/users/${userId}/role`, {
-        method: 'PATCH',
-        body: JSON.stringify({ role: newRole }),
+      await apiFetch('/departments', { method: 'POST', body: JSON.stringify(deptForm) });
+      alert('✅ Department created!');
+      setDeptForm({ name: '' });
+      setShowCreateDept(false);
+      await loadData();
+    } catch (err) { alert(err.error || 'Failed to create department'); }
+    finally { setCreating(false); }
+  };
+
+  const handleDeleteDept = async (id, name) => {
+    if (!confirm(`Are you sure you want to delete the department "${name}"?`)) return;
+    try {
+      await apiFetch(`/departments/${id}`, { method: 'DELETE' });
+      await loadData();
+    } catch (err) { alert(err.error || 'Failed to delete department (it might have users attached).'); }
+  };
+
+  const handleCreateDeptAdmin = async (e, deptId) => {
+    e.preventDefault();
+    
+    // Server-side will enforce that this is a superadmin assigning dept_admin
+    setCreating(true);
+    try {
+      await apiFetch('/users/create-admin', {
+        method: 'POST',
+        body: JSON.stringify({ ...deptAdminForm, departmentId: deptId }),
       });
-      await loadUsers();
-    } catch (err) { alert(err.error || 'Failed to update role'); }
+      alert('✅ Department Admin (HOD) account created & assigned!');
+      setDeptAdminForm({ studentId: '', name: '', email: '', password: '', role: 'dept_admin' });
+      setAssigningHodDeptId(null);
+      await loadData();
+    } catch (err) { alert(err.error || 'Failed to create department admin'); }
+    finally { setCreating(false); }
   };
 
   const handleDeleteUser = async (userId, userName) => {
-    if (!confirm(`Are you sure you want to DELETE user "${userName}"? This cannot be undone.`)) return;
+    if (!confirm(`Are you sure you want to DELETE user "${userName}"?`)) return;
     try {
       await apiFetch(`/users/${userId}`, { method: 'DELETE' });
       await loadData();
     } catch (err) { alert(err.error || 'Failed to delete user'); }
   };
 
-  const handleCreateAdmin = async (e) => {
+  const handleUpdateUser = async (e, userId) => {
     e.preventDefault();
-    setCreating(true);
+    setUpdatingUser(true);
     try {
-      await apiFetch('/users/create-admin', {
-        method: 'POST',
-        body: JSON.stringify(adminForm),
+      await apiFetch(`/users/${userId}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ name: editUserForm.name, phone: editUserForm.phone, student_id: editUserForm.student_id })
       });
-      alert('✅ Admin account created!');
-      setAdminForm({ studentId: '', name: '', email: '', password: '' });
-      setShowCreateAdmin(false);
+      setEditingUserId(null);
       await loadData();
-    } catch (err) { alert(err.error || 'Failed to create admin'); }
-    finally { setCreating(false); }
+    } catch (err) {
+      alert(err.error || 'Failed to update user');
+    } finally {
+      setUpdatingUser(false);
+    }
   };
+
+  if (loading) return <div className="loading-center"><img src="/logo.png" alt="Loading..." className="eventloop-loader" /></div>;
 
   const filteredUsers = users.filter((u) => {
-    const matchesSearch = u.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      u.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      u.student_id.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesRole = filterRole === 'all' || u.role === filterRole;
-    return matchesSearch && matchesRole;
+    return userDeptFilter === 'all' || u.department_id === userDeptFilter;
   });
-
-  const stats = {
-    total: users.length,
-    admins: users.filter((u) => u.role === 'admin').length,
-    students: users.filter((u) => u.role === 'student').length,
-    totalEvents: allEvents.length,
-  };
-
-  if (loading) return <div className="loading-center"><div className="spinner"></div></div>;
 
   return (
     <div className="page-container">
       <div className="page-header animate-in">
-        <h1>🛡️ Super Admin Panel</h1>
-        <p>Manage users, promote coordinators, and oversee the platform</p>
+        <h1>👑 Principal / Super Admin Panel</h1>
+        <p>Global oversight of College Departments and HODs</p>
       </div>
 
-      {/* Stats Cards */}
       <div className="stats-row animate-in" style={{ animationDelay: '80ms' }}>
-        <div className="stat-card glass-card">
-          <div className="stat-number">{stats.total}</div>
+        <div className="stat-card glass-card clickable-stat" onClick={() => setActiveTab('departments')}>
+          <div className="stat-number">{departments.length}</div>
+          <div className="stat-label">Departments</div>
+        </div>
+        <div className="stat-card glass-card clickable-stat" onClick={() => setActiveTab('departments')}>
+          <div className="stat-number">{users.filter(u => u.role === 'dept_admin').length}</div>
+          <div className="stat-label">HODs (Dept Admin)</div>
+        </div>
+        <div className="stat-card glass-card clickable-stat" onClick={() => setActiveTab('users')}>
+          <div className="stat-number">{users.length}</div>
           <div className="stat-label">Total Users</div>
         </div>
-        <div className="stat-card glass-card">
-          <div className="stat-number" style={{ color: '#f59e0b' }}>{stats.admins}</div>
-          <div className="stat-label">Admins</div>
-        </div>
-        <div className="stat-card glass-card">
-          <div className="stat-number" style={{ color: '#6366f1' }}>{stats.students}</div>
-          <div className="stat-label">Students</div>
-        </div>
-        <div className="stat-card glass-card">
-          <div className="stat-number" style={{ color: '#00f0ff' }}>{stats.totalEvents}</div>
-          <div className="stat-label">Total Events</div>
-        </div>
       </div>
 
-      {/* Tab bar */}
-      <div className="tab-bar animate-in" style={{ marginBottom: 24 }}>
-        <button className={`tab-btn ${activeTab === 'users' ? 'active' : ''}`} onClick={() => setActiveTab('users')}>
-          👥 Users
-        </button>
-        <button className={`tab-btn ${activeTab === 'events' ? 'active' : ''}`} onClick={() => setActiveTab('events')}>
-          📅 All Events ({allEvents.length})
-        </button>
-      </div>
-
-      {/* Search & Filter */}
-      {/* ────── USER MANAGEMENT TAB ────── */}
-      {activeTab === 'users' && (
-      <div className="admin-section animate-in" style={{ animationDelay: '160ms' }}>
-        <div className="admin-section-header">
-          <h2>👥 User Management</h2>
-          <button className="btn btn-primary" onClick={() => setShowCreateAdmin(!showCreateAdmin)}>
-            {showCreateAdmin ? 'Cancel' : '+ Add Admin'}
-          </button>
+      <div className="tabs-container split-tabs animate-in" style={{ animationDelay: '150ms', marginTop: '2rem' }}>
+        <div className="tabs-header">
+          <button className={`tab-btn ${activeTab === 'departments' ? 'active' : ''}`} onClick={() => setActiveTab('departments')}>🏛️ Departments & HODs</button>
+          <button className={`tab-btn ${activeTab === 'users' ? 'active' : ''}`} onClick={() => setActiveTab('users')}>👥 Global Users</button>
+          <button className={`tab-btn ${activeTab === 'calendar' ? 'active' : ''}`} onClick={() => setActiveTab('calendar')}>📅 College Calendar</button>
+          <button className={`tab-btn ${activeTab === 'logs' ? 'active' : ''}`} onClick={() => setActiveTab('logs')}>📜 Global Logs</button>
         </div>
 
-        {/* Create Admin Form */}
-        {showCreateAdmin && (
-          <form onSubmit={handleCreateAdmin} className="glass-card" style={{ marginBottom: 24, maxWidth: 500 }}>
-            <h3 style={{ marginBottom: 16 }}>🛡️ Create New Admin Account</h3>
-            <div className="form-group">
-              <label>Staff / USN</label>
-              <input className="form-control" value={adminForm.studentId}
-                onChange={(e) => setAdminForm({ ...adminForm, studentId: e.target.value })}
-                placeholder="e.g. STAFF001" required />
-            </div>
-            <div className="form-group">
-              <label>Full Name</label>
-              <input className="form-control" value={adminForm.name}
-                onChange={(e) => setAdminForm({ ...adminForm, name: e.target.value })}
-                placeholder="Admin's full name" required />
-            </div>
-            <div className="form-group">
-              <label>Email</label>
-              <input className="form-control" type="email" value={adminForm.email}
-                onChange={(e) => setAdminForm({ ...adminForm, email: e.target.value })}
-                placeholder="admin@example.com" required />
-            </div>
-            <div className="form-group">
-              <label>Password</label>
-              <input className="form-control" type="password" value={adminForm.password}
-                onChange={(e) => setAdminForm({ ...adminForm, password: e.target.value })}
-                placeholder="Set a password" required />
-            </div>
-            <button type="submit" className="btn btn-primary" disabled={creating} style={{ width: '100%' }}>
-              {creating ? 'Creating...' : 'Create Admin Account'}
-            </button>
-          </form>
-        )}
+        <div className="tab-content glass-card">
+          {activeTab === 'departments' && (
+            <div className="tab-pane active fade-in">
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+                <h2>College Departments</h2>
+                <button className="btn btn-primary" onClick={() => setShowCreateDept(!showCreateDept)}>
+                  {showCreateDept ? 'Cancel' : '+ Add Department'}
+                </button>
+              </div>
 
-        <div style={{ display: 'flex', gap: 12, marginBottom: 20, flexWrap: 'wrap' }}>
-          <input
-            className="form-control search-input"
-            style={{ flex: 1, minWidth: 200 }}
-            placeholder="🔍 Search by name, email, or USN..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-          />
-          <select
-            className="form-control"
-            style={{ width: 160 }}
-            value={filterRole}
-            onChange={(e) => setFilterRole(e.target.value)}
-          >
-            <option value="all">All Roles</option>
-            <option value="admin">Admins Only</option>
-            <option value="student">Students Only</option>
-          </select>
-        </div>
-
-        {/* Users Table */}
-        <div style={{ overflowX: 'auto' }}>
-          <table className="data-table">
-            <thead>
-              <tr>
-                <th>Name</th>
-                <th>USN</th>
-                <th>Email</th>
-                <th>Role</th>
-                <th>Joined</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredUsers.length === 0 && (
-                <tr><td colSpan="6" style={{ textAlign: 'center', padding: 32, color: 'var(--text-muted)' }}>No users found</td></tr>
+              {showCreateDept && (
+                <form className="glass-card fade-in" style={{ marginBottom: 20 }} onSubmit={handleCreateDept}>
+                  <div style={{ display: 'flex', gap: '1rem' }}>
+                    <input className="form-control" style={{ flex: 1 }} placeholder="Department Name (e.g. Computer Science)" value={deptForm.name} onChange={(e) => setDeptForm({ name: e.target.value })} required />
+                    <button type="submit" className="btn btn-primary" disabled={creating}>{creating ? 'Adding...' : 'Add Dept'}</button>
+                  </div>
+                </form>
               )}
-              {filteredUsers.map((u) => (
-                <tr key={u.id}>
-                  <td style={{ fontWeight: 600 }}>{u.name}</td>
-                  <td><code style={{ fontSize: '0.85rem' }}>{u.student_id}</code></td>
-                  <td>{u.email}</td>
-                  <td>
-                    <span className={`status-badge ${u.role === 'admin' ? 'status-ongoing' : u.role === 'superadmin' ? 'status-completed' : 'status-open'}`}>
-                      {u.role === 'superadmin' ? '🛡️ superadmin' : u.role}
-                    </span>
-                  </td>
-                  <td style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
-                    {new Date(u.created_at).toLocaleDateString('en-IN', { year: 'numeric', month: 'short', day: 'numeric' })}
-                  </td>
-                  <td>
-                    {u.role === 'superadmin' ? (
-                      <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Protected</span>
-                    ) : (
-                      <div style={{ display: 'flex', gap: 6 }}>
-                        {u.role === 'student' ? (
-                          <button className="btn btn-success btn-sm" onClick={() => handleChangeRole(u.id, 'admin')}>
-                            ⬆ Make Admin
-                          </button>
-                        ) : (
-                          <button className="btn btn-secondary btn-sm" onClick={() => handleChangeRole(u.id, 'student')}>
-                            ⬇ Demote
-                          </button>
-                        )}
-                        <button className="btn btn-danger btn-sm" onClick={() => handleDeleteUser(u.id, u.name)}>
-                          🗑
-                        </button>
+
+              <ul className="request-list">
+                {departments.map((dept) => {
+                  const currentHod = users.find(u => u.department_id === dept.id && u.role === 'dept_admin');
+                  
+                  const isExpanded = expandedDeptId === dept.id;
+                  const deptEvents = allEvents.filter(e => e.department_id === dept.id);
+                  const filteredDeptEvents = deptEvents.filter(e => deptEventFilter === 'all' || e.status === deptEventFilter);
+
+                  return (
+                    <li key={dept.id} className="request-item" style={{ display: 'flex', flexDirection: 'column', gap: '1rem', padding: '1.5rem', marginBottom: '1rem' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                        <div>
+                          <strong 
+                            style={{ fontSize: '1.2rem', display: 'block', marginBottom: '4px', cursor: 'pointer', color: '#00f0ff', textDecoration: 'underline' }}
+                            onClick={() => setExpandedDeptId(dept.id)}
+                            title="Click to view events for this department in full screen"
+                          >
+                            {dept.name}
+                          </strong>
+                          <div className="text-sm opacity-70">Joined: {new Date(dept.created_at).toLocaleDateString()} &middot; {deptEvents.length} Events</div>
+                        </div>
+                        <div style={{ display: 'flex', gap: '0.5rem' }}>
+                          {!currentHod ? (
+                            <button className="btn btn-sm btn-success" onClick={() => setAssigningHodDeptId(assigningHodDeptId === dept.id ? null : dept.id)}>
+                              {assigningHodDeptId === dept.id ? 'Cancel' : 'Assign HOD'}
+                            </button>
+                          ) : (
+                            <div style={{ background: 'rgba(32, 191, 107, 0.1)', padding: '4px 12px', borderRadius: '4px', border: '1px solid rgba(32, 191, 107, 0.3)', color: '#20bf6b' }}>
+                              <strong>HOD Assigned:</strong> {currentHod.name}
+                            </div>
+                          )}
+                          <button className="btn btn-sm btn-danger" onClick={() => handleDeleteDept(dept.id, dept.name)}>Delete Dept</button>
+                        </div>
                       </div>
+
+                      {assigningHodDeptId === dept.id && !currentHod && (
+                        <form className="glass-card fade-in" style={{ background: 'rgba(0,0,0,0.1)', border: '1px solid rgba(255,255,255,0.1)', marginTop: '0.5rem' }} onSubmit={(e) => handleCreateDeptAdmin(e, dept.id)}>
+                          <h4 style={{ marginBottom: '1rem' }}>Assign new HOD to {dept.name}</h4>
+                          <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)', gap: '1rem', marginBottom: '1rem' }}>
+                            <input className="form-control" placeholder="Employee/HOD ID" autoComplete="off" value={deptAdminForm.studentId} onChange={(e) => setDeptAdminForm({ ...deptAdminForm, studentId: e.target.value })} required />
+                            <input className="form-control" placeholder="Full Name" autoComplete="off" value={deptAdminForm.name} onChange={(e) => setDeptAdminForm({ ...deptAdminForm, name: e.target.value })} required />
+                            <input className="form-control" type="email" placeholder="Email" autoComplete="off" value={deptAdminForm.email} onChange={(e) => setDeptAdminForm({ ...deptAdminForm, email: e.target.value })} required />
+                            <div style={{ position: 'relative' }}>
+                              <input className="form-control" type={showHodPassword ? 'text' : 'password'} placeholder="Temp Password" autoComplete="new-password" value={deptAdminForm.password} onChange={(e) => setDeptAdminForm({ ...deptAdminForm, password: e.target.value })} required style={{ width: '100%' }} />
+                              <button type="button" onClick={() => setShowHodPassword(!showHodPassword)} style={{ position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', color: '#a1a1aa', cursor: 'pointer', outline: 'none' }}>
+                                {showHodPassword ? '👁️' : '🕶️'}
+                              </button>
+                            </div>
+                          </div>
+                          <button type="submit" className="btn btn-sm btn-primary" disabled={creating}>{creating ? 'Assigning...' : 'Complete Assignment'}</button>
+                        </form>
+                      )}
+                    </li>
+                  )
+                })}
+                {departments.length === 0 && <p className="empty-state">No departments registered yet.</p>}
+              </ul>
+            </div>
+          )}
+
+          {activeTab === 'users' && (
+            <div className="tab-pane active fade-in">
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+                <h2>Global Users</h2>
+                <select className="form-control" style={{ width: 'auto', minWidth: '250px' }} value={userDeptFilter} onChange={(e) => setUserDeptFilter(e.target.value)}>
+                  <option value="all">View All Branches</option>
+                  {departments.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
+                </select>
+              </div>
+
+              <div className="table-responsive">
+                <table className="data-table">
+                  <thead>
+                    <tr>
+                      <th>ID</th>
+                      <th>Name / Details</th>
+                      <th>Department</th>
+                      <th>Role</th>
+                      <th>Action</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredUsers.map(u => {
+                      const dName = departments.find(d => d.id === u.department_id)?.name || 'Unknown/None';
+                      return (
+                        editingUserId === u.id ? (
+                          <tr key={u.id}>
+                            <td>
+                              <input className="form-control" value={editUserForm.student_id} onChange={e => setEditUserForm({...editUserForm, student_id: e.target.value})} style={{ width: '100px' }} />
+                            </td>
+                            <td>
+                              <input className="form-control" value={editUserForm.name} onChange={e => setEditUserForm({...editUserForm, name: e.target.value})} style={{ marginBottom: 4 }} />
+                              <span style={{ opacity: 0.5, fontSize: '0.85rem' }}>{u.email}</span>
+                            </td>
+                            <td>{dName}</td>
+                            <td>
+                              <input className="form-control" value={editUserForm.phone} onChange={e => setEditUserForm({...editUserForm, phone: e.target.value})} placeholder="Phone" style={{ width: '120px' }} />
+                            </td>
+                            <td>
+                              <div style={{ display: 'flex', gap: 4 }}>
+                                <button className="btn btn-sm btn-success" onClick={(e) => handleUpdateUser(e, u.id)} disabled={updatingUser}>{updatingUser ? '...' : 'Save'}</button>
+                                <button className="btn btn-sm btn-secondary" onClick={() => setEditingUserId(null)}>Cancel</button>
+                              </div>
+                            </td>
+                          </tr>
+                        ) : (
+                          <tr key={u.id}>
+                            <td>{u.student_id}</td>
+                            <td>
+                              <strong>{u.name}</strong><br />
+                              <span style={{ opacity: 0.7, fontSize: '0.85rem' }}>{u.email}</span>
+                            </td>
+                            <td>{dName}</td>
+                            <td>
+                              <span className={`role-badge ${u.role === 'superadmin' ? 'role-admin' : u.role === 'dept_admin' ? 'role-admin' : u.role === 'admin' ? 'role-admin' : 'role-student'}`}>
+                                {u.role.replace('_', ' ').toUpperCase()}
+                              </span>
+                              {u.phone && <div style={{ fontSize: '0.8rem', opacity: 0.7, marginTop: 4 }}>📞 {u.phone}</div>}
+                            </td>
+                            <td>
+                              {u.role !== 'superadmin' && (
+                                <div style={{ display: 'flex', gap: 4 }}>
+                                  <button className="btn btn-sm btn-primary" onClick={() => { 
+                                    setEditingUserId(u.id); 
+                                    setEditUserForm({ name: u.name, phone: u.phone || '', student_id: u.student_id || '' }); 
+                                  }}>Edit</button>
+                                  <button className="btn btn-sm btn-danger" onClick={() => handleDeleteUser(u.id, u.name)}>Delete</button>
+                                </div>
+                              )}
+                            </td>
+                          </tr>
+                        )
+                      );
+                    })}
+                    {filteredUsers.length === 0 && (
+                      <tr>
+                        <td colSpan="5" className="empty-state">No users found for this filter.</td>
+                      </tr>
                     )}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+          {activeTab === 'calendar' && (
+            <div className="tab-pane active fade-in">
+              <div style={{ marginBottom: 24 }}>
+                <h2>🏛️ College-wide Event Schedule</h2>
+                <p style={{ opacity: 0.7 }}>Viewing all events happening across all departments.</p>
+              </div>
+              <CollegeCalendar />
+            </div>
+          )}
+
+          {activeTab === 'logs' && (
+            <div className="tab-pane active fade-in">
+              <h2>Global Activity Logs</h2>
+              <ul className="request-list">
+                {activityLogs.map((log) => (
+                  <li key={log.id} className="request-item" style={{ padding: '12px', marginBottom: '8px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <span style={{ fontWeight: 600 }}>{log.users?.name || 'Unknown User'} <span style={{ opacity: 0.6, fontSize: '0.85em' }}>({log.users?.role})</span></span>
+                      <span className="text-sm opacity-70">{new Date(log.timestamp).toLocaleString()}</span>
+                    </div>
+                    <div style={{ fontSize: '0.85rem', opacity: 0.8, color: '#f7b731', marginTop: 2 }}>📍 Dept: {log.departments?.name || 'Global'}</div>
+                    <p style={{ marginTop: 4, fontFamily: 'monospace', background: 'rgba(255,255,255,0.05)', padding: '6px 10px', borderRadius: 6 }}>
+                      {log.action}
+                    </p>
+                  </li>
+                ))}
+                {activityLogs.length === 0 && <p className="empty-state">No activity logs recorded yet.</p>}
+              </ul>
+            </div>
+          )}
         </div>
       </div>
-      )}
 
-      {/* ────── ALL EVENTS TAB ────── */}
-      {activeTab === 'events' && (
-        <div className="admin-section animate-in">
-          <h2 style={{ marginBottom: 16 }}>📅 All Events (Created by All Admins)</h2>
+      {/* ────── DEPARTMENT EVENTS FULL SCREEN MODAL ────── */}
+      {expandedDeptId && (() => {
+        const targetDept = departments.find(d => d.id === expandedDeptId);
+        const deptEvents = allEvents.filter(e => e.department_id === expandedDeptId);
+        const filteredDeptEvents = deptEvents.filter(e => deptEventFilter === 'all' || e.status === deptEventFilter);
 
-          {/* Search bar */}
-          <div style={{ marginBottom: 16 }}>
-            <input
-              className="form-control search-input"
-              placeholder="🔍 Search by event name or creator..."
-              value={eventSearch}
-              onChange={(e) => setEventSearch(e.target.value)}
-            />
-          </div>
+        return (
+          <div className="poster-modal-overlay" onClick={() => setExpandedDeptId(null)}>
+            <div className="poster-modal glass-card animate-in full-screen-modal" onClick={(e) => e.stopPropagation()}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+                <h2>📅 {targetDept?.name} Events</h2>
+                <button className="btn btn-secondary btn-sm" onClick={() => setExpandedDeptId(null)}>Close</button>
+              </div>
 
-          {(() => {
-            const filtered = allEvents.filter((evt) => {
-              const creator = users.find((u) => u.id === evt.created_by);
-              const q = eventSearch.toLowerCase();
-              return evt.title.toLowerCase().includes(q) ||
-                evt.status.toLowerCase().includes(q) ||
-                (creator?.name || '').toLowerCase().includes(q);
-            });
-            return filtered.length === 0 ? (
-              <div className="empty-state"><h3>{eventSearch ? 'No events match your search' : 'No events created yet'}</h3></div>
-            ) : (
-            <div style={{ overflowX: 'auto' }}>
-              <table className="data-table">
-                <thead>
-                  <tr>
-                    <th>Title</th>
-                    <th>Created By</th>
-                    <th>Status</th>
-                    <th>Event Date</th>
-                    <th>Registration Deadline</th>
-                    <th>Fee</th>
-                    <th>Team Size</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filtered.map((evt) => {
-                    const creator = users.find((u) => u.id === evt.created_by);
-                    return (
-                      <tr key={evt.id}>
-                        <td style={{ fontWeight: 600 }}>{evt.title}</td>
-                        <td>{creator ? creator.name : <span style={{ color: 'var(--text-muted)' }}>Unknown</span>}</td>
-                        <td><span className={`status-badge status-${evt.status}`}>{evt.status}</span></td>
-                        <td>{new Date(evt.event_date).toLocaleDateString('en-IN', { year: 'numeric', month: 'short', day: 'numeric' })}</td>
-                        <td>{new Date(evt.registration_deadline).toLocaleDateString('en-IN')}</td>
-                        <td>{evt.entry_fee > 0 ? `₹${evt.entry_fee}` : 'Free'}</td>
-                        <td>{evt.min_team_size}–{evt.max_team_size}</td>
+              <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 16 }}>
+                <select 
+                  className="form-control" 
+                  style={{ width: '200px' }} 
+                  value={deptEventFilter} 
+                  onChange={(e) => setDeptEventFilter(e.target.value)}
+                >
+                  <option value="all">All Statuses</option>
+                  <option value="open">🟢 Open</option>
+                  <option value="ongoing">⏳ Ongoing</option>
+                  <option value="completed">✅ Completed</option>
+                </select>
+              </div>
+
+              {filteredDeptEvents.length === 0 ? (
+                <div className="empty-state">
+                  <h3>No events found for this filter.</h3>
+                </div>
+              ) : (
+                <div className="table-responsive">
+                  <table className="data-table">
+                    <thead>
+                      <tr>
+                        <th>Event Title</th>
+                        <th>Description</th>
+                        <th>Status</th>
+                        <th>Event Date</th>
+                        <th>Reg Deadline</th>
+                        <th>Cost</th>
                       </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
+                    </thead>
+                    <tbody>
+                      {filteredDeptEvents.map(evt => (
+                        <tr key={evt.id}>
+                          <td style={{ fontWeight: 600 }}>{evt.title}</td>
+                          <td style={{ opacity: 0.8 }}>{evt.description || '-'}</td>
+                          <td>
+                            <span className={`status-badge status-${evt.status}`}>{evt.status}</span>
+                          </td>
+                          <td>{(new Date(evt.event_date)).toLocaleString()}</td>
+                          <td>{(new Date(evt.registration_deadline)).toLocaleString()}</td>
+                          <td>{evt.entry_fee > 0 ? `₹${evt.entry_fee}` : 'FREE'}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
             </div>
-            );
-          })()}
-        </div>
-      )}
+          </div>
+        );
+      })()}
+
     </div>
   );
 }

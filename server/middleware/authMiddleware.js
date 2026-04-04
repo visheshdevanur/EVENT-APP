@@ -21,11 +21,22 @@ function requireAuth(req, res, next) {
 
 /**
  * Require admin role — must be used AFTER requireAuth
- * Allows both 'admin' and 'superadmin' roles
+ * Allows 'admin', 'dept_admin', and 'superadmin'
  */
 function requireAdmin(req, res, next) {
-  if (req.user.role !== 'admin' && req.user.role !== 'superadmin') {
+  if (!['admin', 'dept_admin', 'superadmin'].includes(req.user.role)) {
     return res.status(403).json({ error: 'Admin access required' });
+  }
+  next();
+}
+
+/**
+ * Require department administration role
+ * Allows 'dept_admin' and 'superadmin'
+ */
+function requireDeptAdmin(req, res, next) {
+  if (!['dept_admin', 'superadmin'].includes(req.user.role)) {
+    return res.status(403).json({ error: 'Department Admin access required' });
   }
   next();
 }
@@ -40,4 +51,4 @@ function requireSuperAdmin(req, res, next) {
   next();
 }
 
-module.exports = { requireAuth, requireAdmin, requireSuperAdmin };
+module.exports = { requireAuth, requireAdmin, requireDeptAdmin, requireSuperAdmin };

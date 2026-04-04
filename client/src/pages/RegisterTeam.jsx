@@ -66,11 +66,14 @@ export default function RegisterTeam() {
     finally { setSubmitting(false); }
   };
 
-  if (loading) return <div className="loading-center"><div className="spinner"></div></div>;
+  if (loading) return <div className="loading-center"><img src="/logo.png" alt="Loading..." className="eventloop-loader" /></div>;
 
   return (
     <div className="page-container">
       <div className="page-header animate-in">
+        <button className="btn btn-secondary btn-sm" style={{ marginBottom: 16 }} onClick={() => navigate(-1)}>
+          ← Back
+        </button>
         <h1>Register Your Team</h1>
         <p>for {event?.title || 'Event'}</p>
       </div>
@@ -85,8 +88,13 @@ export default function RegisterTeam() {
           <img
             src={event.payment_qr_image}
             alt="Payment QR"
-            style={{ maxWidth: 300, width: '100%', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-subtle)' }}
+            style={{ maxWidth: 300, width: '100%', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-subtle)', marginBottom: 8 }}
           />
+          <div style={{ marginBottom: 16 }}>
+            <a href={event.payment_qr_image} download="payment_qr.png" className="btn btn-secondary btn-sm" target="_blank" rel="noopener noreferrer">
+              ⬇️ Download QR Code
+            </a>
+          </div>
           <div style={{ marginTop: 16, display: 'flex', gap: 8, justifyContent: 'center' }}>
             <button className="btn btn-primary" onClick={() => navigate('/dashboard')}>
               Done — Go to Dashboard

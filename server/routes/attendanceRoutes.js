@@ -14,25 +14,26 @@ router.post('/checkin', requireAuth, requireAdmin, async (req, res) => {
       return res.status(400).json({ error: 'qrToken is required' });
     }
 
-    // Determine which QR field to look up
-    const qrField = type === 'food' ? 'food_qr_token' : 'qr_token';
-
+    // Search both QR token columns to auto-detect type
     const { data: team, error } = await supabase
       .from('teams')
       .select('*, events(title, status)')
-      .eq(qrField, qrToken)
+      .or(`qr_token.eq.${qrToken},food_qr_token.eq.${qrToken},id.eq.${qrToken}`)
       .single();
 
     if (error || !team) {
       return res.status(404).json({ error: 'Invalid QR code — team not found' });
     }
 
+    // Auto-detect type: if token matches food_qr_token, treat as food
+    const effectiveType = (team.food_qr_token === qrToken) ? 'food' : (type || 'attendance');
+
     if (team.payment_status !== 'confirmed') {
       return res.status(400).json({ error: 'Team payment is not confirmed' });
     }
 
     // Handle attendance check-in
-    if (type === 'attendance') {
+    if (effectiveType === 'attendance') {
       if (team.attended) {
         return res.json({ message: 'Team already checked in for attendance', team, type: 'attendance' });
       }
@@ -58,7 +59,7 @@ router.post('/checkin', requireAuth, requireAdmin, async (req, res) => {
     }
 
     // Handle food check-in
-    if (type === 'food') {
+    if (effectiveType === 'food') {
       if (team.food_collected) {
         return res.json({ message: 'Food already collected for this team', team, type: 'food' });
       }

@@ -147,15 +147,15 @@ async function generateCertificatesForEvent(supabase, eventId) {
   const { data: event } = await supabase.from('events').select('*').eq('id', eventId).single();
   if (!event) throw new Error('Event not found');
 
-  // Get ALL attended teams (allow regeneration)
+  // Get ALL confirmed teams for this event (allow cert generation for all participants)
   const { data: teams } = await supabase
     .from('teams')
     .select('*')
     .eq('event_id', eventId)
-    .eq('attended', true);
+    .in('payment_status', ['confirmed', 'approved']);
 
   if (!teams || teams.length === 0) {
-    return { generated: 0, message: 'No attended teams found for this event' };
+    return { generated: 0, message: 'No confirmed teams found for this event' };
   }
 
   const results = [];
@@ -163,7 +163,7 @@ async function generateCertificatesForEvent(supabase, eventId) {
   for (const team of teams) {
     const { data: members } = await supabase
       .from('team_members')
-      .select('users(id, student_id, name)')
+      .select('users(id, student_id, name, email)')
       .eq('team_id', team.id);
 
     for (const member of members || []) {
@@ -177,7 +177,7 @@ async function generateCertificatesForEvent(supabase, eventId) {
         studentId: user.id,
         templatePath: event.certificate_template || null,
       });
-      results.push({ studentId: user.student_id, name: user.name, certPath });
+      results.push({ studentId: user.student_id, name: user.name, email: user.email, certPath });
     }
 
     await supabase.from('teams').update({ certificates_generated: true }).eq('id', team.id);

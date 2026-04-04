@@ -151,3 +151,16 @@ CREATE TABLE IF NOT EXISTS team_messages (
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 ALTER TABLE team_messages DISABLE ROW LEVEL SECURITY;
+
+-- =====================
+-- SHARING POSTS (Global Instagram-style feed)
+-- =====================
+CREATE TABLE IF NOT EXISTS sharing_posts (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  content TEXT,
+  media_url TEXT,
+  media_type VARCHAR(10),
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+ALTER TABLE sharing_posts DISABLE ROW LEVEL SECURITY;

@@ -1,30 +1,40 @@
 import { useState, useRef, useEffect } from 'react';
-import { Link, useNavigate, useLocation } from 'react-router-dom';
+import { Link, useNavigate, useLocation, useSearchParams } from 'react-router-dom';
 import { apiFetch } from '../utils/api';
 
 export default function Navbar({ user, onLogout }) {
   const navigate = useNavigate();
   const location = useLocation();
+  const [searchParams] = useSearchParams();
   const [showProfile, setShowProfile] = useState(false);
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [showChangePw, setShowChangePw] = useState(false);
   const [pwForm, setPwForm] = useState({ currentPassword: '', newPassword: '', confirmPassword: '' });
   const [pwMsg, setPwMsg] = useState({ type: '', text: '' });
   const [pwLoading, setPwLoading] = useState(false);
   const [showPw, setShowPw] = useState({ current: false, new: false, confirm: false });
+  
   const dropdownRef = useRef(null);
+  const menuRef = useRef(null);
 
-  // Close dropdown when clicking outside
+  // Close dropdown/menu when clicking outside
   useEffect(() => {
     function handleClickOutside(e) {
       if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
         setShowProfile(false);
       }
+      if (menuRef.current && !menuRef.current.contains(e.target) && !e.target.closest('.mobile-toggle')) {
+        setIsMenuOpen(false);
+      }
     }
-    if (showProfile) {
-      document.addEventListener('mousedown', handleClickOutside);
-      return () => document.removeEventListener('mousedown', handleClickOutside);
-    }
-  }, [showProfile]);
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [showProfile, isMenuOpen]);
+
+  // Close menu on route change
+  useEffect(() => {
+    setIsMenuOpen(false);
+  }, [location.pathname]);
 
   const handleLogout = () => {
     localStorage.removeItem('token');
@@ -75,30 +85,44 @@ export default function Navbar({ user, onLogout }) {
   return (
     <>
       <nav className="navbar">
-        <Link to="/" className="navbar-brand">⚡ EventPortal</Link>
+        <Link to="/" className="navbar-brand" style={{ display: 'flex', alignItems: 'center' }}><img src="/logo.png" alt="logo" style={{ width: 26, height: 26, marginRight: 8, filter: 'drop-shadow(0 0 6px rgba(0, 240, 255, 0.4))' }} /> <span className="brand-text">EventLoop</span></Link>
 
         {user ? (
-          <div className="navbar-links">
-            {user.role === 'superadmin' && (
-              <>
-                <Link to="/superadmin" className={isActive('/superadmin')}>Users</Link>
-                <Link to="/admin" className={isActive('/admin')}>Events</Link>
-              </>
-            )}
-            {user.role === 'admin' && (
-              <Link to="/admin" className={isActive('/admin')}>Dashboard</Link>
-            )}
-            {user.role === 'student' && (
-              <Link to="/dashboard" className={isActive('/dashboard')}>Dashboard</Link>
-            )}
+          <>
+            <button className="mobile-toggle" onClick={() => setIsMenuOpen(!isMenuOpen)} aria-label="Toggle navigation">
+              {isMenuOpen ? '✕' : '☰'}
+            </button>
 
-            {/* Profile area — self-contained with ref for outside-click */}
+            <div className={`navbar-links ${isMenuOpen ? 'open' : ''}`} ref={menuRef}>
+              {user.role === 'superadmin' && (
+                <>
+                  <Link to="/superadmin" className={isActive('/superadmin')}>Admin Panel</Link>
+                  <Link to="/admin" className={isActive('/admin')}>All Events</Link>
+                </>
+              )}
+              {user.role === 'dept_admin' && (
+                <>
+                  <Link to="/admin" className={isActive('/admin')}>Dashboard</Link>
+                </>
+              )}
+              {user.role === 'admin' && (
+                <Link to="/admin" className={isActive('/admin')}>Dashboard</Link>
+              )}
+              {user.role === 'student' && (
+                <>
+                  <Link to="/dashboard?tab=events" className={location.pathname === '/dashboard' && searchParams.get('tab') !== 'teams' && searchParams.get('tab') !== 'certs' ? 'active' : ''}>Events</Link>
+                  <Link to="/dashboard?tab=teams" className={location.pathname === '/dashboard' && searchParams.get('tab') === 'teams' ? 'active' : ''}>My Teams</Link>
+                  <Link to="/dashboard?tab=certs" className={location.pathname === '/dashboard' && searchParams.get('tab') === 'certs' ? 'active' : ''}>Certificates</Link>
+                </>
+              )}
+            </div>
+
             <div className="navbar-user" ref={dropdownRef}>
               <button className="profile-btn" onClick={() => setShowProfile(!showProfile)} title="Profile">
                 <span className="profile-avatar">{user.name?.charAt(0).toUpperCase()}</span>
                 <span className="profile-name">{user.name}</span>
                 <span className={`user-badge ${getBadgeClass(user.role)}`}>
-                  {user.role === 'superadmin' ? '🛡️' : user.role}
+                  {user.role === 'superadmin' ? '🛡️' : user.role === 'dept_admin' ? 'HOD' : user.role}
                 </span>
               </button>
 
@@ -114,10 +138,9 @@ export default function Navbar({ user, onLogout }) {
                       </span>
                     </div>
                   </div>
-                  <div className="profile-dropdown-divider" />
-                  <button className="profile-dropdown-item" onClick={() => { setShowChangePw(true); setShowProfile(false); }}>
-                    🔑 Change Password
-                  </button>
+                  <Link to="/settings" className="profile-dropdown-item" onClick={() => setShowProfile(false)}>
+                    ⚙️ Settings
+                  </Link>
                   <div className="profile-dropdown-divider" />
                   <button className="profile-dropdown-item logout-item" onClick={handleLogout}>
                     🚪 Logout
@@ -125,7 +148,7 @@ export default function Navbar({ user, onLogout }) {
                 </div>
               )}
             </div>
-          </div>
+          </>
         ) : (
           <div className="navbar-links">
             <Link to="/" className={isActive('/')}>Login</Link>
@@ -136,23 +159,14 @@ export default function Navbar({ user, onLogout }) {
       {/* ────── CHANGE PASSWORD MODAL ────── */}
       {showChangePw && (
         <div className="modal-overlay" onClick={() => setShowChangePw(false)}>
-          <div className="modal-content glass-card" onClick={(e) => e.stopPropagation()}
+          <div className="modal-content glass-card" onClick={(e) => e.stopPropagation()} 
             style={{ maxWidth: 420, animation: 'fadeSlideUp 0.3s ease' }}>
-            <h3 style={{ marginBottom: 20, background: 'var(--gradient-main)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
+            <h3 style={{ marginBottom: 20, color: 'var(--text-primary)' }}>
               🔑 Change Password
             </h3>
 
             {pwMsg.text && (
-              <div className={`alert ${pwMsg.type === 'success' ? 'alert-success' : 'alert-error'}`}
-                style={{
-                  padding: '10px 14px',
-                  borderRadius: 8,
-                  marginBottom: 16,
-                  fontSize: '0.85rem',
-                  background: pwMsg.type === 'success' ? 'rgba(16, 185, 129, 0.12)' : 'rgba(239, 68, 68, 0.12)',
-                  color: pwMsg.type === 'success' ? '#10b981' : '#ef4444',
-                  border: `1px solid ${pwMsg.type === 'success' ? 'rgba(16, 185, 129, 0.3)' : 'rgba(239, 68, 68, 0.3)'}`,
-                }}>
+              <div className={`alert ${pwMsg.type === 'success' ? 'alert-success' : 'alert-error'}`} style={{ marginBottom: 20 }}>
                 {pwMsg.text}
               </div>
             )}
@@ -160,46 +174,38 @@ export default function Navbar({ user, onLogout }) {
             <form onSubmit={handleChangePassword}>
               <div className="form-group">
                 <label>Current Password</label>
-                <div style={{ position: 'relative' }}>
-                  <input className="form-control" type={showPw.current ? 'text' : 'password'} value={pwForm.currentPassword}
-                    onChange={(e) => setPwForm({ ...pwForm, currentPassword: e.target.value })}
-                    placeholder="Enter current password" required style={{ paddingRight: 44 }} />
-                  <button type="button" onClick={() => setShowPw({ ...showPw, current: !showPw.current })}
-                    style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: '1.1rem', padding: 4 }}>
+                <div className="password-wrapper">
+                  <input className="form-control" type={showPw.current ? 'text' : 'password'} required
+                    value={pwForm.currentPassword} onChange={(e) => setPwForm({ ...pwForm, currentPassword: e.target.value })} />
+                  <button type="button" className="password-toggle" onClick={() => setShowPw({ ...showPw, current: !showPw.current })}>
                     {showPw.current ? '🙈' : '👁️'}
                   </button>
                 </div>
               </div>
               <div className="form-group">
                 <label>New Password</label>
-                <div style={{ position: 'relative' }}>
-                  <input className="form-control" type={showPw.new ? 'text' : 'password'} value={pwForm.newPassword}
-                    onChange={(e) => setPwForm({ ...pwForm, newPassword: e.target.value })}
-                    placeholder="Enter new password" required style={{ paddingRight: 44 }} />
-                  <button type="button" onClick={() => setShowPw({ ...showPw, new: !showPw.new })}
-                    style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: '1.1rem', padding: 4 }}>
+                <div className="password-wrapper">
+                  <input className="form-control" type={showPw.new ? 'text' : 'password'} required
+                    value={pwForm.newPassword} onChange={(e) => setPwForm({ ...pwForm, newPassword: e.target.value })} />
+                  <button type="button" className="password-toggle" onClick={() => setShowPw({ ...showPw, new: !showPw.new })}>
                     {showPw.new ? '🙈' : '👁️'}
                   </button>
                 </div>
               </div>
               <div className="form-group">
                 <label>Confirm New Password</label>
-                <div style={{ position: 'relative' }}>
-                  <input className="form-control" type={showPw.confirm ? 'text' : 'password'} value={pwForm.confirmPassword}
-                    onChange={(e) => setPwForm({ ...pwForm, confirmPassword: e.target.value })}
-                    placeholder="Confirm new password" required style={{ paddingRight: 44 }} />
-                  <button type="button" onClick={() => setShowPw({ ...showPw, confirm: !showPw.confirm })}
-                    style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: '1.1rem', padding: 4 }}>
+                <div className="password-wrapper">
+                  <input className="form-control" type={showPw.confirm ? 'text' : 'password'} required
+                    value={pwForm.confirmPassword} onChange={(e) => setPwForm({ ...pwForm, confirmPassword: e.target.value })} />
+                  <button type="button" className="password-toggle" onClick={() => setShowPw({ ...showPw, confirm: !showPw.confirm })}>
                     {showPw.confirm ? '🙈' : '👁️'}
                   </button>
                 </div>
               </div>
-              <div style={{ display: 'flex', gap: 8 }}>
-                <button type="submit" className="btn btn-primary" style={{ flex: 1 }} disabled={pwLoading}>
-                  {pwLoading ? 'Changing...' : 'Update Password'}
-                </button>
-                <button type="button" className="btn btn-secondary" onClick={() => setShowChangePw(false)}>
-                  Cancel
+              <div style={{ display: 'flex', gap: 12, marginTop: 24 }}>
+                <button type="button" className="btn btn-secondary" style={{ flex: 1 }} onClick={() => setShowChangePw(false)}>Cancel</button>
+                <button type="submit" className="btn btn-primary" style={{ flex: 2 }} disabled={pwLoading}>
+                  {pwLoading ? 'Saving...' : 'Update Password'}
                 </button>
               </div>
             </form>
