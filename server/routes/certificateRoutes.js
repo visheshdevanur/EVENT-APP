@@ -51,14 +51,18 @@ router.get('/download/:teamId/:studentId', requireAuth, async (req, res) => {
       return res.status(400).json({ error: 'Certificates have not been generated yet' });
     }
 
-    const filePath = path.join(CERT_DIR, team.event_id, `${studentId}.pdf`);
-    console.log('Certificate download requested:', filePath, 'exists:', fs.existsSync(filePath));
+    const storagePath = `${team.event_id}/${studentId}.pdf`;
+    const { data, error } = await supabase.storage.from('certificates').download(storagePath);
 
-    if (!fs.existsSync(filePath)) {
+    if (error || !data) {
+      console.error('Storage download error:', error);
       return res.status(404).json({ error: 'Certificate file not found. Please ask admin to regenerate certificates.' });
     }
 
-    res.download(filePath, `certificate_${studentId}.pdf`);
+    const buffer = Buffer.from(await data.arrayBuffer());
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="certificate_${studentId}.pdf"`);
+    res.send(buffer);
   } catch (err) {
     console.error('Download error:', err);
     res.status(500).json({ error: 'Failed to download certificate' });

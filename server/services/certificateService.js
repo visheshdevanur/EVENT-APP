@@ -2,20 +2,27 @@ const { PDFDocument, rgb, StandardFonts } = require('pdf-lib');
 const fs = require('fs');
 const path = require('path');
 
-const CERT_DIR = path.join(__dirname, '..', 'certificates');
 const UPLOADS_DIR = path.join(__dirname, '..', 'uploads', 'templates');
+const BUCKET_NAME = 'certificates';
+
+/**
+ * Ensure the Supabase Storage bucket exists
+ */
+async function ensureBucket(supabase) {
+  const { data: buckets } = await supabase.storage.listBuckets();
+  const exists = (buckets || []).some(b => b.name === BUCKET_NAME);
+  if (!exists) {
+    await supabase.storage.createBucket(BUCKET_NAME, { public: true });
+  }
+}
 
 /**
  * Generate a certificate PDF for a student.
  * If an admin-uploaded template exists, overlay names on it.
  * Otherwise, generate a default template.
+ * Returns the PDF bytes (Buffer).
  */
 async function generateCertificate({ studentName, teamName, eventTitle, eventDate, eventId, studentId, templatePath }) {
-  const eventDir = path.join(CERT_DIR, eventId);
-  if (!fs.existsSync(eventDir)) {
-    fs.mkdirSync(eventDir, { recursive: true });
-  }
-
   let pdfDoc;
   let page;
   let useUploadedTemplate = false;
@@ -64,12 +71,9 @@ async function generateCertificate({ studentName, teamName, eventTitle, eventDat
   const borderColor = rgb(0.18, 0.35, 0.58);
   const goldColor = rgb(0.85, 0.65, 0.13);
   const darkText = rgb(0.12, 0.12, 0.12);
-  const whiteText = rgb(1, 1, 1);
 
   // If using uploaded template, ONLY overlay the student's name
-  // The admin's template already has all other content (event title, dates, etc.)
   if (useUploadedTemplate) {
-    // Student name only — centered, clean, no background box
     const nameSize = 28;
     const nameWidth = fontBold.widthOfTextAtSize(studentName, nameSize);
     page.drawText(studentName, {
@@ -81,11 +85,9 @@ async function generateCertificate({ studentName, teamName, eventTitle, eventDat
     });
   } else {
     // ── Default template design ──
-    // Outer border
     page.drawRectangle({ x: 20, y: 20, width: width - 40, height: height - 40, borderColor, borderWidth: 3 });
     page.drawRectangle({ x: 35, y: 35, width: width - 70, height: height - 70, borderColor: goldColor, borderWidth: 1.5 });
 
-    // Header
     const titleText = 'CERTIFICATE OF PARTICIPATION';
     const titleSize = 28;
     const titleWidth = fontBold.widthOfTextAtSize(titleText, titleSize);
@@ -98,7 +100,6 @@ async function generateCertificate({ studentName, teamName, eventTitle, eventDat
       thickness: 2, color: goldColor,
     });
 
-    // Body
     const bodyStartY = height - 180;
     const presentedText = 'This certificate is proudly presented to';
     const presentedWidth = fontItalic.widthOfTextAtSize(presentedText, 14);
@@ -125,29 +126,29 @@ async function generateCertificate({ studentName, teamName, eventTitle, eventDat
     const dateWidth = fontRegular.widthOfTextAtSize(dateText, 12);
     page.drawText(dateText, { x: (width - dateWidth) / 2, y: bodyStartY - 180, size: 12, font: fontRegular, color: darkText });
 
-    // Footer
     page.drawLine({ start: { x: width / 2 - 100, y: 90 }, end: { x: width / 2 + 100, y: 90 }, thickness: 1, color: darkText });
     const sigText = 'Event Coordinator';
     const sigWidth = fontRegular.widthOfTextAtSize(sigText, 11);
     page.drawText(sigText, { x: (width - sigWidth) / 2, y: 72, size: 11, font: fontRegular, color: darkText });
   }
 
-  // Save the PDF
+  // Return PDF as Buffer
   const pdfBytes = await pdfDoc.save();
-  const outputPath = path.join(eventDir, `${studentId}.pdf`);
-  fs.writeFileSync(outputPath, pdfBytes);
-
-  return outputPath;
+  return Buffer.from(pdfBytes);
 }
 
 /**
- * Generate certificates for all attended teams in an event
+ * Generate certificates for all attended teams in an event.
+ * Stores PDFs in Supabase Storage instead of the local filesystem.
  */
 async function generateCertificatesForEvent(supabase, eventId) {
   const { data: event } = await supabase.from('events').select('*').eq('id', eventId).single();
   if (!event) throw new Error('Event not found');
 
-  // Get ALL confirmed teams for this event (allow cert generation for all participants)
+  // Ensure the storage bucket exists
+  await ensureBucket(supabase);
+
+  // Get ALL confirmed teams for this event
   const { data: teams } = await supabase
     .from('teams')
     .select('*')
@@ -168,7 +169,7 @@ async function generateCertificatesForEvent(supabase, eventId) {
 
     for (const member of members || []) {
       const user = member.users;
-      const certPath = await generateCertificate({
+      const pdfBuffer = await generateCertificate({
         studentName: user.name,
         teamName: team.team_name,
         eventTitle: event.title,
@@ -177,7 +178,22 @@ async function generateCertificatesForEvent(supabase, eventId) {
         studentId: user.id,
         templatePath: event.certificate_template || null,
       });
-      results.push({ studentId: user.student_id, name: user.name, email: user.email, certPath });
+
+      // Upload to Supabase Storage
+      const storagePath = `${eventId}/${user.id}.pdf`;
+      const { error: uploadErr } = await supabase.storage
+        .from(BUCKET_NAME)
+        .upload(storagePath, pdfBuffer, {
+          contentType: 'application/pdf',
+          upsert: true,
+        });
+
+      if (uploadErr) {
+        console.error(`Failed to upload cert for ${user.name}:`, uploadErr);
+        continue;
+      }
+
+      results.push({ studentId: user.student_id, name: user.name, email: user.email, storagePath });
     }
 
     await supabase.from('teams').update({ certificates_generated: true }).eq('id', team.id);
