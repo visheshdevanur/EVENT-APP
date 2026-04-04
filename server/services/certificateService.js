@@ -29,7 +29,7 @@ async function generateCertificate({ studentName, teamName, eventTitle, eventDat
 
   // Try to load admin-uploaded template
   if (templatePath) {
-    const templatePathCleaned = templatePath.replace(/^\\/+/, '');
+    const templatePathCleaned = templatePath.startsWith('/') ? templatePath.slice(1) : templatePath;
     const fullPath = path.join(__dirname, '..', templatePathCleaned);
     if (fs.existsSync(fullPath)) {
       const ext = path.extname(fullPath).toLowerCase();
