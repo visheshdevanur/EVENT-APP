@@ -50,6 +50,29 @@ app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
+// ── SMTP Debug (temporary — remove after testing) ──
+app.get('/api/test-smtp', async (req, res) => {
+  try {
+    const nodemailer = require('nodemailer');
+    const smtpEmail = (process.env.SMTP_EMAIL || '').trim();
+    const smtpPass = (process.env.SMTP_PASSWORD || '').trim();
+
+    if (!smtpEmail || !smtpPass) {
+      return res.json({ error: 'SMTP_EMAIL or SMTP_PASSWORD not set', smtpEmail: smtpEmail || '(empty)' });
+    }
+
+    const transporter = nodemailer.createTransport({
+      service: 'gmail',
+      auth: { user: smtpEmail, pass: smtpPass },
+    });
+
+    await transporter.verify();
+    res.json({ status: 'SMTP connection OK', smtpEmail });
+  } catch (err) {
+    res.json({ status: 'SMTP FAILED', error: err.message });
+  }
+});
+
 // ── Static: certificates (for direct access if needed) ──
 app.use('/certificates', express.static(path.join(__dirname, 'certificates')));
 

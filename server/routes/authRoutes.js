@@ -28,12 +28,17 @@ router.post('/send-signup-otp', async (req, res) => {
     const signupData = { studentId, name, password, phone, departmentId };
 
     // Upsert OTP
-    await supabase.from('otp_verifications').upsert({
+    const { error: upsertErr } = await supabase.from('otp_verifications').upsert({
       email,
       otp,
       expires_at: expiresAt,
       signup_data: signupData
     });
+
+    if (upsertErr) {
+      console.error('OTP upsert error:', upsertErr);
+      return res.status(500).json({ error: 'Failed to save OTP. Please try again.' });
+    }
 
     // Send email
     try {
@@ -186,10 +191,15 @@ router.post('/forgot-password', async (req, res) => {
     const resetCode = Math.floor(100000 + Math.random() * 900000).toString();
     const resetExpiry = new Date(Date.now() + 15 * 60 * 1000).toISOString();
 
-    await supabase
+    const { error: updateErr } = await supabase
       .from('users')
       .update({ reset_code: resetCode, reset_code_expiry: resetExpiry })
       .eq('id', user.id);
+
+    if (updateErr) {
+      console.error('Reset code save error:', updateErr);
+      return res.status(500).json({ error: 'Failed to save reset code.' });
+    }
 
     // Send email with nodemailer
     try {
