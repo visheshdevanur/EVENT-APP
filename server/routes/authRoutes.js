@@ -52,7 +52,9 @@ router.post('/send-signup-otp', async (req, res) => {
       }
 
       const transporter = nodemailer.createTransport({
-        service: 'gmail',
+        host: 'smtp-relay.brevo.com',
+        port: 587,
+        secure: false, // true for 465, false for other ports
         auth: { user: smtpEmail, pass: smtpPass }
       });
 
@@ -214,7 +216,9 @@ router.post('/forgot-password', async (req, res) => {
       console.log(`📧 Attempting to send email via ${smtpEmail}...`);
 
       const transporter = nodemailer.createTransport({
-        service: 'gmail',
+        host: 'smtp-relay.brevo.com',
+        port: 587,
+        secure: false,
         auth: {
           user: smtpEmail,
           pass: smtpPass,
