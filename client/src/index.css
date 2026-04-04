@@ -1450,6 +1450,293 @@ textarea.form-control {
     background: #ffffff;
     border: 1px solid #e2e8f0;
   }
+
+  /* ═══════════════════════════════════════════════════
+     FIX: Overflow / Card Boundary Issues on Mobile
+     ═══════════════════════════════════════════════════ */
+
+  /* ─── Glass cards — clip overflowing children ─── */
+  .glass-card {
+    overflow: hidden;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+  }
+
+  /* ─── Tab content — allow internal scroll ─── */
+  .tab-content.glass-card {
+    overflow: visible;
+    overflow-x: auto;
+  }
+
+  /* ─── Table wrapper — horizontal scroll inside card ─── */
+  .table-responsive {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    margin: 0 -16px;
+    padding: 0 16px;
+  }
+  .data-table {
+    min-width: 580px;
+    width: 100%;
+    table-layout: auto;
+  }
+
+  /* ─── SuperAdmin tabs-header — horizontal scroll ─── */
+  .tabs-header {
+    display: flex;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    gap: 4px;
+    padding-bottom: 8px;
+  }
+  .tabs-header::-webkit-scrollbar { display: none; }
+  .tabs-header .tab-btn {
+    white-space: nowrap;
+    flex-shrink: 0;
+    padding: 10px 14px;
+    font-size: 0.78rem;
+  }
+
+  /* ─── Department request items — wrap button row ─── */
+  .request-item {
+    overflow: hidden;
+  }
+  .request-item > div:first-child {
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+  .request-item > div:first-child > div:last-child {
+    flex-wrap: wrap;
+    gap: 6px;
+    width: 100%;
+  }
+  .request-item .btn-sm {
+    flex: 1 1 auto;
+    min-width: 0;
+    text-align: center;
+    white-space: nowrap;
+    font-size: 0.75rem;
+    padding: 8px 10px;
+  }
+
+  /* ─── HOD badge — wrap text ─── */
+  .request-item div[style*="rgba(32, 191, 107"] {
+    font-size: 0.75rem;
+    padding: 4px 8px;
+    word-break: break-word;
+    white-space: normal;
+  }
+
+  /* ─── Global Users header — stack on mobile ─── */
+  .tab-pane > div:first-child {
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+  .tab-pane > div:first-child h2 {
+    font-size: 1.2rem;
+    flex: 1 1 100%;
+  }
+  .tab-pane > div:first-child select.form-control {
+    width: 100% !important;
+    min-width: 0 !important;
+  }
+
+  /* ─── Calendar — contain inside card ─── */
+  .college-calendar,
+  .glass-card:has(> div[style*="grid-template-columns: repeat(7"]) {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* ─── Calendar grid — smaller cells ─── */
+  div[style*="grid-template-columns: repeat(7"] {
+    gap: 4px !important;
+  }
+  div[style*="grid-template-columns: repeat(7"] > div {
+    min-height: 70px !important;
+    padding: 4px !important;
+    border-radius: 8px !important;
+  }
+  div[style*="grid-template-columns: repeat(7"] > div > div > div {
+    font-size: 0.55rem !important;
+    padding: 1px 3px !important;
+  }
+  div[style*="grid-template-columns: repeat(7"] > div > span {
+    font-size: 0.7rem !important;
+  }
+
+  /* ─── Calendar weekday header — smaller ─── */
+  div[style*="repeat(7, 1fr)"][style*="opacity: 0.5"] > div {
+    font-size: 0.65rem !important;
+  }
+
+  /* ─── Calendar header — wrap ─── */
+  .glass-card > div:first-child[style*="space-between"] {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .glass-card > div:first-child[style*="space-between"] h2 {
+    font-size: 1.2rem !important;
+  }
+
+  /* ─── Activity logs — wrap long rows ─── */
+  .request-item div[style*="space-between"] {
+    flex-wrap: wrap;
+    gap: 4px;
+  }
+
+  /* ═══════════════════════════════════════════════════
+     LIGHT MODE — Mobile Visibility Fixes
+     ═══════════════════════════════════════════════════ */
+
+  /* ─── Stat cards — ensure readable numbers in light mode ─── */
+  [data-theme='light'] .stat-card {
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+  }
+  [data-theme='light'] .stat-number { color: #4f46e5; }
+  [data-theme='light'] .stat-label { color: #64748b; }
+
+  /* ─── Glass cards in light mode ─── */
+  [data-theme='light'] .glass-card {
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    color: #0f172a;
+  }
+
+  /* ─── Buttons light mode ─── */
+  [data-theme='light'] .btn-danger,
+  [data-theme='light'] .btn-success {
+    color: #ffffff;
+  }
+
+  /* ─── Role badges ─── */
+  [data-theme='light'] .role-badge {
+    color: #ffffff;
+  }
+  [data-theme='light'] .role-student {
+    background: #6366f1;
+    color: #ffffff;
+  }
+  [data-theme='light'] .role-admin {
+    background: #ec4899;
+    color: #ffffff;
+  }
+
+  /* ─── Calendar cells in light mode ─── */
+  [data-theme='light'] div[style*="grid-template-columns: repeat(7"] > div {
+    background: #f8fafc !important;
+    border-color: #e2e8f0 !important;
+  }
+
+  /* ─── Calendar event tags in light mode ─── */
+  [data-theme='light'] div[style*="grid-template-columns: repeat(7"] > div > div > div {
+    color: #ffffff !important;
+  }
+
+  /* ─── Calendar day numbers ─── */
+  [data-theme='light'] div[style*="grid-template-columns: repeat(7"] > div > span {
+    color: #334155 !important;
+  }
+
+  /* ─── Calendar weekday labels ─── */
+  [data-theme='light'] div[style*="repeat(7, 1fr)"][style*="opacity: 0.5"] > div {
+    color: #64748b !important;
+  }
+
+  /* ─── Profile dropdown in light mode ─── */
+  [data-theme='light'] .profile-dropdown {
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.1);
+  }
+  [data-theme='light'] .profile-dropdown-item { color: #334155; }
+  [data-theme='light'] .logout-item { color: #ef4444; }
+
+  /* ─── Tab‑btn light mode ─── */
+  [data-theme='light'] .tab-btn {
+    color: #64748b;
+    background: transparent;
+  }
+  [data-theme='light'] .tab-btn.active {
+    color: #ffffff;
+    background: #4f46e5;
+  }
+
+  /* ─── Tab content ─── */
+  [data-theme='light'] .tab-content.glass-card {
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+  }
+
+  /* ─── Request items (dept cards) ─── */
+  [data-theme='light'] .request-item {
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    color: #0f172a;
+  }
+
+  /* ─── Activity log monospace block ─── */
+  [data-theme='light'] .request-item p[style*="monospace"] {
+    background: #f1f5f9 !important;
+    color: #334155 !important;
+  }
+
+  /* ─── Search box input ─── */
+  [data-theme='light'] .search-box input {
+    color: #0f172a !important;
+  }
+
+  /* ─── Modal overlay ─── */
+  [data-theme='light'] .modal-overlay {
+    background: rgba(0, 0, 0, 0.3);
+  }
+  [data-theme='light'] .modal-content {
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    color: #0f172a;
+  }
+
+  /* ─── Text colors in light mode ─── */
+  [data-theme='light'] .text-sm { color: #64748b; }
+  [data-theme='light'] strong { color: #0f172a; }
+
+  /* ─── HOD badge light mode ─── */
+  [data-theme='light'] div[style*="rgba(32, 191, 107"] {
+    color: #15803d !important;
+    background: rgba(34, 197, 94, 0.1) !important;
+    border-color: rgba(34, 197, 94, 0.3) !important;
+  }
+
+  /* ─── Page header ─── */
+  [data-theme='light'] .page-header h1 { color: #0f172a; }
+  [data-theme='light'] .page-header p { color: #64748b; }
+
+  /* ─── InlineCSS override: fix white-on-white text ─── */
+  [data-theme='light'] [style*="color: var(--text-secondary)"] {
+    color: #64748b !important;
+  }
+  [data-theme='light'] [style*="color: var(--text-primary)"] {
+    color: #0f172a !important;
+  }
+  [data-theme='light'] [style*="opacity: 0.7"] {
+    color: #64748b;
+  }
+
+  /* ─── Create dept form in light mode ─── */
+  [data-theme='light'] .glass-card .glass-card {
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+  }
+
+  /* ─── Toast in light mode ─── */
+  [data-theme='light'] .toast {
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    color: #0f172a;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+  }
 }
 
 /* ─── Slide‑up animation for mobile profile dropdown ─── */
