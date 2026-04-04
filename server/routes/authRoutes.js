@@ -42,27 +42,15 @@ router.post('/send-signup-otp', async (req, res) => {
 
     // Send email
     try {
-      const nodemailer = require('nodemailer');
-      const smtpEmail = (process.env.SMTP_EMAIL || '').trim();
-      const smtpPass = (process.env.SMTP_PASSWORD || '').trim();
+      const apiKey = (process.env.BREVO_API_KEY || process.env.SMTP_PASSWORD || '').trim();
+      const senderEmail = (process.env.SMTP_EMAIL || '').trim();
 
-      if (!smtpEmail || !smtpPass) {
-        console.warn('⚠️ SMTP not configured. OTP:', otp);
+      if (!apiKey || !senderEmail) {
+        console.warn('⚠️ Brevo API Key not configured. OTP:', otp);
         return res.json({ message: 'OTP sent (Development Mode: Check server logs)', dev: true, otp: process.env.NODE_ENV === 'development' ? otp : undefined });
       }
 
-      const transporter = nodemailer.createTransport({
-        host: 'smtp-relay.brevo.com',
-        port: 587,
-        secure: false, // true for 465, false for other ports
-        auth: { user: smtpEmail, pass: smtpPass }
-      });
-
-      await transporter.sendMail({
-        from: `"EventPortal" <${smtpEmail}>`,
-        to: email,
-        subject: '🚀 Verify Your Email — EventPortal',
-        html: `
+      const htmlContent = `
           <div style="font-family: 'Inter', sans-serif; max-width: 480px; margin: 0 auto; background: #111827; color: #f1f5f9; padding: 32px; border-radius: 16px; border: 1px solid #1f2937;">
             <h2 style="color: #6366f1; margin: 0 0 16px 0;">⚡ EventPortal</h2>
             <p style="font-size: 16px;">Welcome, <b>${name}</b>!</p>
@@ -72,8 +60,27 @@ router.post('/send-signup-otp', async (req, res) => {
             </div>
             <p style="color: #94a3b8; font-size: 14px;">This code expires in 10 minutes. If you didn't request this, please ignore this email.</p>
           </div>
-        `
+        `;
+
+      const response = await fetch('https://api.brevo.com/v3/smtp/email', {
+        method: 'POST',
+        headers: {
+          'accept': 'application/json',
+          'api-key': apiKey,
+          'content-type': 'application/json'
+        },
+        body: JSON.stringify({
+          sender: { name: 'EventPortal', email: senderEmail },
+          to: [{ email: email, name: name }],
+          subject: '🚀 Verify Your Email — EventPortal',
+          htmlContent: htmlContent
+        })
       });
+
+      if (!response.ok) {
+        const errData = await response.text();
+        throw new Error(`Brevo HTTP error: ${response.status} ${errData}`);
+      }
 
       res.json({ message: 'OTP sent to your email' });
     } catch (mailErr) {
@@ -203,33 +210,18 @@ router.post('/forgot-password', async (req, res) => {
       return res.status(500).json({ error: 'Failed to save reset code.' });
     }
 
-    // Send email with nodemailer
+    // Send email with Brevo REST API
     try {
-      const nodemailer = require('nodemailer');
-      const smtpEmail = (process.env.SMTP_EMAIL || '').trim();
-      const smtpPass = (process.env.SMTP_PASSWORD || '').trim();
+      const apiKey = (process.env.BREVO_API_KEY || process.env.SMTP_PASSWORD || '').trim();
+      const senderEmail = (process.env.SMTP_EMAIL || '').trim();
 
-      if (!smtpEmail || !smtpPass) {
-        throw new Error('SMTP_EMAIL or SMTP_PASSWORD not configured in .env');
+      if (!apiKey || !senderEmail) {
+        throw new Error('BREVO_API_KEY or SMTP_EMAIL not configured in .env');
       }
 
-      console.log(`📧 Attempting to send email via ${smtpEmail}...`);
+      console.log(`📧 Attempting to send reset email via Brevo HTTP to ${user.email}...`);
 
-      const transporter = nodemailer.createTransport({
-        host: 'smtp-relay.brevo.com',
-        port: 587,
-        secure: false,
-        auth: {
-          user: smtpEmail,
-          pass: smtpPass,
-        },
-      });
-
-      await transporter.sendMail({
-        from: `"EventPortal" <${smtpEmail}>`,
-        to: user.email,
-        subject: '🔐 Password Reset Code — EventPortal',
-        html: `
+      const htmlContent = `
           <div style="font-family: 'Inter', sans-serif; max-width: 480px; margin: 0 auto; background: #111827; color: #f1f5f9; padding: 32px; border-radius: 16px;">
             <h2 style="color: #6366f1; margin-bottom: 8px;">⚡ EventPortal</h2>
             <p>Hi ${user.name},</p>
@@ -239,8 +231,27 @@ router.post('/forgot-password', async (req, res) => {
             </div>
             <p style="color: #94a3b8; font-size: 14px;">This code expires in 15 minutes. If you didn't request this, please ignore this email.</p>
           </div>
-        `,
+        `;
+
+      const response = await fetch('https://api.brevo.com/v3/smtp/email', {
+        method: 'POST',
+        headers: {
+          'accept': 'application/json',
+          'api-key': apiKey,
+          'content-type': 'application/json'
+        },
+        body: JSON.stringify({
+          sender: { name: 'EventPortal', email: senderEmail },
+          to: [{ email: user.email, name: user.name }],
+          subject: '🔐 Password Reset Code — EventPortal',
+          htmlContent: htmlContent
+        })
       });
+
+      if (!response.ok) {
+        const errData = await response.text();
+        throw new Error(`Brevo HTTP error: ${response.status} ${errData}`);
+      }
 
       console.log(`✉️ Reset code emailed to ${email} successfully!`);
     } catch (emailErr) {
