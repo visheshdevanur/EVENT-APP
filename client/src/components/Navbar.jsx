@@ -34,7 +34,7 @@ export default function Navbar({ user, onLogout }) {
   // Close menu on route change
   useEffect(() => {
     setIsMenuOpen(false);
-  }, [location.pathname]);
+  }, [location.pathname, searchParams]);
 
   const handleLogout = () => {
     localStorage.removeItem('token');
