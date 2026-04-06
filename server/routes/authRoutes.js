@@ -52,8 +52,11 @@ router.post('/send-signup-otp', async (req, res) => {
 
       const htmlContent = `
           <div style="font-family: 'Inter', sans-serif; max-width: 480px; margin: 0 auto; background: #111827; color: #f1f5f9; padding: 32px; border-radius: 16px; border: 1px solid #1f2937;">
-            <h2 style="color: #6366f1; margin: 0 0 16px 0;">⚡ EventPortal</h2>
-            <p style="font-size: 16px;">Welcome, <b>${name}</b>!</p>
+            <div style="text-align: center; margin-bottom: 24px;">
+              <img src="${process.env.CLIENT_URL || 'https://client-snowy-two-86.vercel.app'}/logo.png" alt="EventLoop Logo" style="height: 50px; border-radius: 8px; object-fit: contain;" />
+            </div>
+            <h2 style="color: #6366f1; margin: 0 0 16px 0; text-align: center;">Welcome to EventLoop</h2>
+            <p style="font-size: 16px; text-align: center;">Hi, <b>${name}</b>!</p>
             <p>Use the code below to verify your email and complete your registration:</p>
             <div style="background: rgba(99, 102, 241, 0.1); border: 1px dashed #6366f1; padding: 24px; border-radius: 12px; text-align: center; margin: 24px 0;">
               <span style="font-size: 42px; font-weight: 800; letter-spacing: 12px; color: #818cf8;">${otp}</span>
@@ -70,9 +73,9 @@ router.post('/send-signup-otp', async (req, res) => {
           'content-type': 'application/json'
         },
         body: JSON.stringify({
-          sender: { name: 'EventPortal', email: senderEmail },
+          sender: { name: 'EventLoop', email: senderEmail },
           to: [{ email: email, name: name }],
-          subject: '🚀 Verify Your Email — EventPortal',
+          subject: '🚀 Verify Your Email — EventLoop',
           htmlContent: htmlContent
         })
       });
@@ -223,7 +226,10 @@ router.post('/forgot-password', async (req, res) => {
 
       const htmlContent = `
           <div style="font-family: 'Inter', sans-serif; max-width: 480px; margin: 0 auto; background: #111827; color: #f1f5f9; padding: 32px; border-radius: 16px;">
-            <h2 style="color: #6366f1; margin-bottom: 8px;">⚡ EventPortal</h2>
+            <div style="text-align: center; margin-bottom: 24px;">
+              <img src="${process.env.CLIENT_URL || 'https://client-snowy-two-86.vercel.app'}/logo.png" alt="EventLoop Logo" style="height: 50px; border-radius: 8px; object-fit: contain;" />
+            </div>
+            <h2 style="color: #6366f1; margin-bottom: 16px; text-align: center;">EventLoop</h2>
             <p>Hi ${user.name},</p>
             <p>Your password reset code is:</p>
             <div style="background: linear-gradient(135deg, #6366f1, #a855f7); padding: 20px; border-radius: 12px; text-align: center; margin: 24px 0;">
@@ -241,9 +247,9 @@ router.post('/forgot-password', async (req, res) => {
           'content-type': 'application/json'
         },
         body: JSON.stringify({
-          sender: { name: 'EventPortal', email: senderEmail },
+          sender: { name: 'EventLoop', email: senderEmail },
           to: [{ email: user.email, name: user.name }],
-          subject: '🔐 Password Reset Code — EventPortal',
+          subject: '🔐 Password Reset Code — EventLoop',
           htmlContent: htmlContent
         })
       });
